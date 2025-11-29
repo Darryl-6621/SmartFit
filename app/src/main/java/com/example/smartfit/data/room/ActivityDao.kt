@@ -16,15 +16,14 @@ interface StepDao {
     @Update
     suspend fun updateStep(step: StepEntity)
 
-    @Query("SELECT * FROM steps ORDER BY date DESC")
-    fun getAllSteps(): Flow<List<StepEntity>>
+    @Query("SELECT * FROM steps WHERE userEmail = :email ORDER BY date DESC")
+    fun getAllSteps(email: String): Flow<List<StepEntity>>
 
-    @Query("SELECT SUM(steps) FROM steps WHERE date = :todayDate")
-    fun getTodaySteps(todayDate: String): Flow<Int?>
+    @Query("SELECT SUM(steps) FROM steps WHERE date = :todayDate AND userEmail = :email")
+    fun getTodaySteps(todayDate: String, email: String): Flow<Int?>
 
-    // --- CRITICAL: Needed to check if today already has an entry ---
-    @Query("SELECT * FROM steps WHERE date = :date LIMIT 1")
-    suspend fun getStepByDate(date: String): StepEntity?
+    @Query("SELECT * FROM steps WHERE date = :date AND userEmail = :email LIMIT 1")
+    suspend fun getStepByDate(date: String, email: String): StepEntity?
 
     @Delete
     suspend fun deleteStep(step: StepEntity)
@@ -38,8 +37,8 @@ interface WorkoutDao {
     @Update
     suspend fun updateWorkout(workout: WorkoutEntity)
 
-    @Query("SELECT * FROM workouts ORDER BY date DESC")
-    fun getAllWorkouts(): Flow<List<WorkoutEntity>>
+    @Query("SELECT * FROM workouts WHERE userEmail = :email ORDER BY date DESC")
+    fun getAllWorkouts(email: String): Flow<List<WorkoutEntity>>
 
     @Delete
     suspend fun deleteWorkout(workout: WorkoutEntity)
@@ -50,8 +49,8 @@ interface CalorieIntakeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFood(food: CalorieIntakeEntity)
 
-    @Query("SELECT * FROM calorie_intake ORDER BY date DESC")
-    fun getAllFood(): Flow<List<CalorieIntakeEntity>>
+    @Query("SELECT * FROM calorie_intake WHERE userEmail = :email ORDER BY date DESC")
+    fun getAllFood(email: String): Flow<List<CalorieIntakeEntity>>
 
     @Delete
     suspend fun deleteFood(food: CalorieIntakeEntity)

@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "steps")
 data class StepEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val userEmail: String,
     val date: String,
     val steps: Int,
     val description: String = ""
@@ -14,6 +15,7 @@ data class StepEntity(
 @Entity(tableName = "workouts")
 data class WorkoutEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val userEmail: String,
     val date: String,
     val workoutType: String,
     val durationMinutes: Int,
@@ -23,6 +25,7 @@ data class WorkoutEntity(
 @Entity(tableName = "calorie_intake")
 data class CalorieIntakeEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val userEmail: String,
     val date: String,
     val foodName: String,
     val quantity: Double,

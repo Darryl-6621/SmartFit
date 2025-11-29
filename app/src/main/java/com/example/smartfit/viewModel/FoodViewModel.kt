@@ -16,7 +16,7 @@ class FoodViewModel(
     private val repository: ActivityRepository
 ) : ViewModel() {
 
-    private val apiKey = "e98a6124e99d496ebaf0d5a4b58eeaeb" // Ideally keep this in local.properties
+    private val apiKey = "f407abce416748bcb11aeb14e6246dc8" // Ideally keep this in local.properties
 
     private val _searchResults = MutableStateFlow<List<FoodSearchItem>>(emptyList())
     val searchResults = _searchResults.asStateFlow()

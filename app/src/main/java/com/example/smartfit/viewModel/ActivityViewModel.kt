@@ -1,44 +1,76 @@
 package com.example.smartfit.viewModel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.smartfit.SmartFitApplication
+import com.example.smartfit.data.dataStore.UserPreferences
 import com.example.smartfit.data.room.CalorieIntakeEntity
 import com.example.smartfit.data.room.StepEntity
 import com.example.smartfit.data.room.WorkoutEntity
 import com.example.smartfit.repository.ActivityRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.util.Log
 
 class ActivityViewModel(
-    private val repository: ActivityRepository
+    private val repository: ActivityRepository,
+    private val userPreferences: UserPreferences
 ) : ViewModel() {
 
-    // --- Data Streams ---
-    val allSteps: StateFlow<List<StepEntity>> = repository.allSteps
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val allSteps: StateFlow<List<StepEntity>> = userPreferences.email
+        .flatMapLatest { email ->
+            if (!email.isNullOrEmpty()) {
+                repository.getAllSteps(email)
+            } else {
+                flowOf(emptyList())
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val allWorkouts: StateFlow<List<WorkoutEntity>> = repository.allWorkouts
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val allWorkouts: StateFlow<List<WorkoutEntity>> = userPreferences.email
+        .flatMapLatest { email ->
+            if (!email.isNullOrEmpty()) {
+                repository.getAllWorkouts(email)
+            } else {
+                flowOf(emptyList())
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val allFood: StateFlow<List<CalorieIntakeEntity>> = repository.allFood
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val allFood: StateFlow<List<CalorieIntakeEntity>> = userPreferences.email
+        .flatMapLatest { email ->
+            if (!email.isNullOrEmpty()) {
+                repository.getAllFood(email)
+            } else {
+                flowOf(emptyList())
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // --- Actions ---
 
-    // STEPS (Single Entry Logic)
-    // This single function handles both ADD and UPDATE
+    // STEPS
     fun saveSteps(steps: Int, description: String) = viewModelScope.launch {
-        Log.d("ActivityViewModel", "Attempting to save steps: $steps , Description: $description")
-        repository.insertStep(getTodayDate(), steps, description)
-        Log.d("ActivityViewModel", "Steps saved successfully for date: ${getTodayDate()}")
+        val email = getCurrentUserEmail()
+        if (email != null) {
+            Log.d("ActivityViewModel", "Saving steps for user $email: $steps")
+            repository.insertStep(getTodayDate(), steps, description, email)
+        } else {
+            Log.e("ActivityViewModel", "Cannot save steps: No user logged in")
+        }
     }
 
     fun deleteStep(item: StepEntity) = viewModelScope.launch {
@@ -47,12 +79,13 @@ class ActivityViewModel(
 
     // WORKOUTS
     fun addWorkout(type: String, duration: Int, description: String) = viewModelScope.launch {
-        Log.d("ActivityViewModel", "Attempting to save workout: Type=$type , Duration=$duration , Desc=$description")
-        repository.insertWorkout(getTodayDate(), type, duration, description)
-        Log.d("ActivityViewModel", "Workout saved successfully")
+        val email = getCurrentUserEmail()
+        if (email != null) {
+            Log.d("ActivityViewModel", "Saving workout for user $email")
+            repository.insertWorkout(getTodayDate(), type, duration, description, email)
+        }
     }
 
-    // Explicit update for workouts (since multiple allowed per day)
     fun updateWorkout(workout: WorkoutEntity) = viewModelScope.launch {
         repository.updateWorkout(workout)
     }
@@ -71,21 +104,30 @@ class ActivityViewModel(
         description: String,
         image: String?
     ) = viewModelScope.launch {
-        Log.d("ActivityViewModel", "Adding Food: $name , Qty: $qty , BaseCals: $baseCals")
-        val formattedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)
-        repository.insertFood(
-            date = formattedDate,
-            name = name,
-            quantity = qty,
-            unit = unit,
-            caloriesPerUnit = baseCals,
-            description = description,
-            image = image
-        )
-        Log.d("ActivityViewModel", "Food item '$name' inserted into DB")
+        val email = getCurrentUserEmail()
+        if (email != null) {
+            Log.d("ActivityViewModel", "Adding Food for $email: $name")
+            val formattedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)
+            repository.insertFood(
+                date = formattedDate,
+                name = name,
+                quantity = qty,
+                unit = unit,
+                caloriesPerUnit = baseCals,
+                description = description,
+                image = image,
+                email = email
+            )
+        }
     }
+
     fun deleteFood(item: CalorieIntakeEntity) = viewModelScope.launch {
         repository.deleteFood(item)
+    }
+
+    private suspend fun getCurrentUserEmail(): String? {
+        val email = userPreferences.email.first()
+        return if (email == "User") null else email
     }
 
     private fun getTodayDate(): String {
@@ -95,7 +137,7 @@ class ActivityViewModel(
     class Factory(private val app: SmartFitApplication) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(ActivityViewModel::class.java)) {
-                return ActivityViewModel(app.repository) as T
+                return ActivityViewModel(app.repository, UserPreferences(app)) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

@@ -7,10 +7,11 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [User::class, StepEntity::class, WorkoutEntity::class, CalorieIntakeEntity::class],
-    version = 8,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
+
     abstract fun userDao(): UserDao
     abstract fun stepDao(): StepDao
     abstract fun workoutDao(): WorkoutDao
@@ -27,8 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "smartfit_database"
                 )
-                    // This will wipe the database to apply changes since we don't have a migration script.
-                    // This prevents the crash.
+
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

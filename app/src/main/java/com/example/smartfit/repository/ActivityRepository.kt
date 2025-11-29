@@ -14,18 +14,20 @@ class ActivityRepository(
     private val ninjaApi: NinjasApiService,
     private val spoonacularApi: SpoonacularApiService
 ) {
-    val allSteps: Flow<List<StepEntity>> = stepDao.getAllSteps()
-    val allWorkouts: Flow<List<WorkoutEntity>> = workoutDao.getAllWorkouts()
-    val allFood: Flow<List<CalorieIntakeEntity>> = calorieIntakeDao.getAllFood()
 
-    fun getTodayStepCount(date: String): Flow<Int> = stepDao.getTodaySteps(date).map { it ?: 0 }
+    fun getAllSteps(email: String): Flow<List<StepEntity>> = stepDao.getAllSteps(email)
+    fun getAllWorkouts(email: String): Flow<List<WorkoutEntity>> = workoutDao.getAllWorkouts(email)
+    fun getAllFood(email: String): Flow<List<CalorieIntakeEntity>> = calorieIntakeDao.getAllFood(email)
 
-    suspend fun setTodaySteps(date: String, steps: Int) {
-        insertStep(date, steps, "Manual Update")
+    fun getTodayStepCount(date: String, email: String): Flow<Int> =
+        stepDao.getTodaySteps(date, email).map { it ?: 0 }
+
+    suspend fun setTodaySteps(date: String, steps: Int, email: String) {
+        insertStep(date, steps, "Manual Update", email)
     }
 
-    suspend fun insertStep(date: String, steps: Int, description: String = "") {
-        val existingStep = stepDao.getStepByDate(date)
+    suspend fun insertStep(date: String, steps: Int, description: String = "", email: String) {
+        val existingStep = stepDao.getStepByDate(date, email)
 
         if (existingStep != null) {
             val updatedStep = existingStep.copy(
@@ -38,7 +40,8 @@ class ActivityRepository(
             val newStep = StepEntity(
                 date = date,
                 steps = steps,
-                description = description
+                description = description,
+                userEmail = email
             )
             stepDao.insertStep(newStep)
         }
@@ -56,14 +59,16 @@ class ActivityRepository(
         date: String,
         type: String,
         duration: Int,
-        description: String
+        description: String,
+        email: String
     ) {
         workoutDao.insertWorkout(
             WorkoutEntity(
                 date = date,
                 workoutType = type,
                 durationMinutes = duration,
-                description = description
+                description = description,
+                userEmail = email
             )
         )
     }
@@ -79,7 +84,8 @@ class ActivityRepository(
         unit: String,
         caloriesPerUnit: Double,
         description: String,
-        image: String? = null
+        image: String? = null,
+        email: String
     ) {
         // Repository calculates the total for storage
         val totalCalories = quantity * caloriesPerUnit
@@ -92,10 +98,12 @@ class ActivityRepository(
                 unit = unit,
                 calories = totalCalories,
                 description = description,
-                image = image
+                image = image,
+                userEmail = email
             )
         )
     }
+
     suspend fun deleteStep(item: StepEntity) = stepDao.deleteStep(item)
     suspend fun deleteWorkout(item: WorkoutEntity) = workoutDao.deleteWorkout(item)
     suspend fun deleteFood(item: CalorieIntakeEntity) = calorieIntakeDao.deleteFood(item)
@@ -147,7 +155,7 @@ class ActivityRepository(
         }
     }
 
-suspend fun searchFood(query: String, apiKey: String) =
+    suspend fun searchFood(query: String, apiKey: String) =
         spoonacularApi.searchIngredients(query, apiKey)
 
     suspend fun getFoodDetails(id: Int, apiKey: String) =
