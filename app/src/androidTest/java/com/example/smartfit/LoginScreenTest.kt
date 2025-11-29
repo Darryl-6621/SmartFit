@@ -1,6 +1,8 @@
 package com.example.smartfit
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -15,24 +17,26 @@ class LoginScreenTest {
 
     @Test
     fun login_withEmptyPassword_doesNotTriggerSuccess() {
-        // 1. 设置一个变量来检测是否登录成功
         var loggedIn = false
-
-        // 2. 加载 LoginScreen
         composeTestRule.setContent {
-            LoginScreen(
-                onLoginSuccess = { loggedIn = true },
-                onNavigateToRegister = {}
-            )
+            LoginScreen(onLoginSuccess = { loggedIn = true }, onRegisterClick = {})
         }
-
-        // 3. 找到输入框并输入 Email (故意不输密码)
-        composeTestRule.onNodeWithText("Email").performTextInput("test@example.com")
-
-        // 4. 点击登录按钮
+        composeTestRule.onNodeWithText("Email Address").performTextInput("test@example.com")
         composeTestRule.onNodeWithText("LOGIN").performClick()
-
-        // 5. 验证：loggedIn 应该依然是 false (因为密码为空)
         assert(!loggedIn)
+    }
+
+    @Test
+    fun login_passwordVisibility_toggles() {
+
+        composeTestRule.setContent {
+            LoginScreen(onLoginSuccess = {}, onRegisterClick = {})
+        }
+        composeTestRule.onNodeWithText("Password").performTextInput("secret123")
+        composeTestRule.onNodeWithContentDescription("Show password").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Show password").performClick()
+        composeTestRule.onNodeWithContentDescription("Hide password").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Hide password").performClick()
+        composeTestRule.onNodeWithContentDescription("Show password").assertIsDisplayed()
     }
 }
